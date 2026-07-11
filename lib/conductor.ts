@@ -12,6 +12,7 @@ import type { PasoFlujo } from "@/types";
 export const FLUJO_AGENTES: PasoFlujo[] = [
   "upload",
   "foda",
+  "strategies",
   "problem",
   "causal",
   "audit",
@@ -38,6 +39,7 @@ export function requiereValidacion(paso: PasoFlujo): boolean {
 export const PASO_LABELS: Record<PasoFlujo, string> = {
   upload: "Carga de Documentos",
   foda: "Análisis FODA",
+  strategies: "Estrategias (Porter)",
   problem: "Problema Central",
   causal: "Árbol de Problemas",
   audit: "Auditoría Metodológica",
@@ -54,4 +56,5 @@ export const AGENTE_META = {
   pareto: { nombre: "Pareto Filter", descripcion: "Priorización 80/20" },
   audit: { nombre: "Methodological Auditor", descripcion: "Validación Marco Lógico" },
   export: { nombre: "Format Painter", descripcion: "Exportación DACYTI" },
+  strategies: { nombre: "Strategic Advisor", descripcion: "Análisis Porter · Harvard" },
 } as const;

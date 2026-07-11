@@ -130,6 +130,63 @@ export interface ArbolObjetivos {
   medios_directos: MedioDirecto[];
 }
 
+// ─── Análisis Estratégico Porter ─────────────────────────────────────────────
+
+export type IntensidadFuerza = "ALTA" | "MEDIA" | "BAJA";
+export type TipoEstrategiaPorter = "DIFERENCIACION" | "EFICIENCIA_INSTITUCIONAL" | "ENFOQUE";
+export type HorizonteTemporal = "CORTO_PLAZO" | "MEDIANO_PLAZO" | "LARGO_PLAZO";
+export type PrioridadEstrategia = "CRITICA" | "ALTA" | "MEDIA";
+
+export interface FuerzaPorter {
+  intensidad: IntensidadFuerza;
+  descripcion: string;
+  implicacion_estrategica: string;
+}
+
+export interface AnalisisCincoFuerzas {
+  rivalidad_institucional: FuerzaPorter;
+  poder_financiadores: FuerzaPorter;
+  amenaza_nuevos_actores: FuerzaPorter;
+  poder_proveedores: FuerzaPorter;
+  presion_sustitutos: FuerzaPorter;
+  fuerza_dominante: string;
+  resumen: string;
+}
+
+export interface EstrategiaPorter {
+  id: string;
+  tipo: TipoEstrategiaPorter;
+  nombre: string;
+  descripcion: string;
+  medio_vinculado: string;
+  causa_critica_vinculada: string;
+  ventaja_distintiva: string;
+  actividades_clave: string[];
+  trade_off: string;
+  indicador: string;
+  horizonte: HorizonteTemporal;
+  prioridad: PrioridadEstrategia;
+  evidencia: string[];
+}
+
+export interface LineaEstrategica {
+  id: string;
+  nombre: string;
+  tipo: TipoEstrategiaPorter;
+  objetivo_vinculado: string;
+  estrategias: EstrategiaPorter[];
+}
+
+export interface AnalisisEstrategico {
+  cinco_fuerzas: AnalisisCincoFuerzas;
+  posicionamiento_recomendado: string;
+  estrategia_generica: TipoEstrategiaPorter;
+  lineas_estrategicas: LineaEstrategica[];
+  trade_offs_criticos: string[];
+  calce_actividades: string[];
+  resumen_ejecutivo: string;
+}
+
 // ─── Estado de Sesión (Zustand) ───────────────────────────────────────────────
 export type PasoFlujo =
   | "upload"
@@ -138,6 +195,7 @@ export type PasoFlujo =
   | "causal"
   | "audit"
   | "objectives"
+  | "strategies"
   | "export";
 
 export interface AgentStatus {
@@ -148,6 +206,7 @@ export interface AgentStatus {
   pareto: "idle" | "running" | "done" | "error";
   audit: "idle" | "running" | "done" | "error";
   export: "idle" | "running" | "done" | "error";
+  strategies: "idle" | "running" | "done" | "error";
 }
 
 export interface SessionState {
@@ -163,6 +222,7 @@ export interface SessionState {
   pareto: AnalisisPareto | null;
   auditoria: ResultadoAuditoria | null;
   arbol_objetivos: ArbolObjetivos | null;
+  analisis_estrategico: AnalisisEstrategico | null;
   // Acciones
   setPasoActual: (paso: PasoFlujo) => void;
   setAgentStatus: (agente: keyof AgentStatus, status: AgentStatus[keyof AgentStatus]) => void;
@@ -175,5 +235,6 @@ export interface SessionState {
   setPareto: (pareto: AnalisisPareto) => void;
   setAuditoria: (auditoria: ResultadoAuditoria) => void;
   setArbolObjetivos: (arbol: ArbolObjetivos) => void;
+  setAnalisisEstrategico: (analisis: AnalisisEstrategico) => void;
   resetSession: () => void;
 }

@@ -11,6 +11,7 @@ import type {
   AnalisisPareto,
   ResultadoAuditoria,
   ArbolObjetivos,
+  AnalisisEstrategico,
 } from "@/types";
 
 const initialAgentStatus: AgentStatus = {
@@ -21,6 +22,7 @@ const initialAgentStatus: AgentStatus = {
   pareto: "idle",
   audit: "idle",
   export: "idle",
+  strategies: "idle",
 };
 
 export const useSTBStore = create<SessionState>((set) => ({
@@ -36,6 +38,7 @@ export const useSTBStore = create<SessionState>((set) => ({
   pareto: null,
   auditoria: null,
   arbol_objetivos: null,
+  analisis_estrategico: null,
 
   setPasoActual: (paso: PasoFlujo) => set({ paso_actual: paso }),
 
@@ -64,6 +67,9 @@ export const useSTBStore = create<SessionState>((set) => ({
 
   setArbolObjetivos: (arbol_objetivos: ArbolObjetivos) => set({ arbol_objetivos }),
 
+  setAnalisisEstrategico: (analisis_estrategico: AnalisisEstrategico) =>
+    set({ analisis_estrategico }),
+
   resetSession: () =>
     set({
       paso_actual: "upload",
@@ -78,5 +84,6 @@ export const useSTBStore = create<SessionState>((set) => ({
       pareto: null,
       auditoria: null,
       arbol_objetivos: null,
+      analisis_estrategico: null,
     }),
 }));

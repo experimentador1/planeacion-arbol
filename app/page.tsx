@@ -14,9 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { PASO_LABELS, siguientePaso } from "@/lib/conductor";
-import type { FODA, CandidatoProblema, Documento, Hallazgo } from "@/types";
+import { StrategiesPanel } from "./components/strategies/StrategiesPanel";
+import type { FODA, CandidatoProblema, Documento, Hallazgo, AnalisisEstrategico } from "@/types";
 
-const PASOS_PROGRESO = ["upload", "foda", "problem", "causal", "audit", "objectives", "export"];
+const PASOS_PROGRESO = ["upload", "foda", "strategies", "problem", "causal", "audit", "objectives", "export"];
 
 function UploadScreen() {
   const { setAgentStatus, setDocumentos, setHallazgos, setPasoActual, agentes } = useSTBStore();
@@ -172,7 +173,14 @@ function UploadScreen() {
 }
 
 function FODAScreen() {
-  const { foda, debilidades_prioritarias, setAgentStatus, setCandidatos, setPasoActual, hallazgos } = useSTBStore();
+  const {
+    foda,
+    debilidades_prioritarias,
+    hallazgos,
+    setAgentStatus,
+    setAnalisisEstrategico,
+    setPasoActual,
+  } = useSTBStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -181,26 +189,30 @@ function FODAScreen() {
   const handleConfirm = async (updatedFoda: FODA) => {
     setLoading(true);
     setError(null);
-    setAgentStatus("problem", "running");
+    setAgentStatus("strategies", "running");
 
     try {
       useSTBStore.getState().setFODA(updatedFoda, debilidades_prioritarias);
 
-      const res = await fetch("/api/problem", {
+      const res = await fetch("/api/strategies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foda: updatedFoda, debilidades_prioritarias }),
+        body: JSON.stringify({
+          foda: updatedFoda,
+          debilidades_prioritarias,
+          hallazgos,
+        }),
       });
 
-      if (!res.ok) throw new Error("Error en Problem Architect");
-      const data = await res.json() as { candidatos: CandidatoProblema[] };
+      if (!res.ok) throw new Error("Error en Strategic Advisor");
+      const data = await res.json() as { analisis_estrategico: AnalisisEstrategico };
 
-      setCandidatos(data.candidatos);
-      setAgentStatus("problem", "done");
-      setPasoActual("problem");
+      if (data.analisis_estrategico) setAnalisisEstrategico(data.analisis_estrategico);
+      setAgentStatus("strategies", "done");
+      setPasoActual("strategies");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
-      setAgentStatus("problem", "error");
+      setAgentStatus("strategies", "error");
     } finally {
       setLoading(false);
     }
@@ -231,9 +243,9 @@ function FODAScreen() {
       )}
 
       {loading && (
-        <div className="flex items-center gap-2 text-sm text-blue-600">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
           <span className="animate-spin">⟳</span>
-          <span>Problem Architect identificando candidatos al Problema Central…</span>
+          <span>Strategic Advisor analizando el entorno institucional con Marco Porter…</span>
         </div>
       )}
     </div>
@@ -610,6 +622,159 @@ function ObjectivesScreen() {
   );
 }
 
+function StrategiesScreen() {
+  const {
+    analisis_estrategico,
+    foda,
+    debilidades_prioritarias,
+    hallazgos,
+    setAgentStatus,
+    setCandidatos,
+    setPasoActual,
+  } = useSTBStore();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!analisis_estrategico) return null;
+
+  const handleContinuar = async () => {
+    setLoading(true);
+    setError(null);
+    setAgentStatus("problem", "running");
+
+    try {
+      const res = await fetch("/api/problem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ foda, debilidades_prioritarias }),
+      });
+
+      if (!res.ok) throw new Error("Error en Problem Architect");
+      const data = await res.json() as { candidatos: CandidatoProblema[] };
+
+      setCandidatos(data.candidatos);
+      setAgentStatus("problem", "done");
+      setPasoActual("problem");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+      setAgentStatus("problem", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Análisis Estratégico</h2>
+          <p className="text-gray-500 text-sm mt-1">
+            Módulo complementario · Strategic Advisor · Marco Porter · Harvard Business School
+          </p>
+        </div>
+        <Badge variant="outline" className="text-xs shrink-0 mt-1.5">
+          HBR 2008
+        </Badge>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+        Este análisis es un complemento estratégico basado en el FODA institucional.
+        Al continuar, el flujo de Marco Lógico retoma con la identificación del Problema Central.
+      </div>
+
+      <StrategiesPanel analisis={analisis_estrategico} />
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+          {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-blue-600">
+          <span className="animate-spin">⟳</span>
+          <span>Problem Architect identificando candidatos al Problema Central…</span>
+        </div>
+      )}
+
+      <Button
+        size="lg"
+        className="w-full"
+        onClick={handleContinuar}
+        disabled={loading}
+      >
+        {loading ? "Identificando Problema Central…" : "Continuar al Árbol de Problemas →"}
+      </Button>
+    </div>
+  );
+}
+
+function DescargarReporteBtn() {
+  const {
+    foda,
+    analisis_estrategico,
+    arbol_problemas,
+    pareto,
+    auditoria,
+    arbol_objetivos,
+  } = useSTBStore();
+  const [loading, setLoading] = useState(false);
+
+  if (!foda) return null;
+
+  const handleDescargar = async () => {
+    setLoading(true);
+    try {
+      const ReactPDF = await import("@react-pdf/renderer");
+      const { ReportePdf } = await import("./components/ReportePdf");
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const blob = await (ReactPDF.pdf as any)(
+        <ReportePdf
+          foda={foda}
+          analisisEstrategico={analisis_estrategico}
+          arbolProblemas={arbol_problemas}
+          pareto={pareto}
+          auditoria={auditoria}
+          arbolObjetivos={arbol_objetivos}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `DACYTI_PlanDesarrollo2026_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Error generando reporte:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={handleDescargar}
+      disabled={loading}
+      className="text-xs gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50"
+    >
+      {loading ? (
+        <>
+          <span className="animate-spin">⟳</span>
+          Generando…
+        </>
+      ) : (
+        <>
+          📄 Reporte completo
+        </>
+      )}
+    </Button>
+  );
+}
+
 export default function Home() {
   const { paso_actual, agentes, resetSession } = useSTBStore();
 
@@ -620,6 +785,7 @@ export default function Home() {
     switch (paso_actual) {
       case "upload": return <UploadScreen />;
       case "foda": return <FODAScreen />;
+      case "strategies": return <StrategiesScreen />;
       case "problem": return <ProblemScreen />;
       case "causal": return <CausalScreen />;
       case "audit": return <AuditScreen />;
@@ -648,13 +814,9 @@ export default function Home() {
             <Badge variant="outline" className="text-xs">
               {PASO_LABELS[paso_actual]}
             </Badge>
-            <a
-              href="/api/diagrama"
-              target="_blank"
-              className="text-xs text-blue-600 hover:text-blue-800 underline underline-offset-2"
-            >
-              📐 Diagrama arquitectura
-            </a>
+
+            <DescargarReporteBtn />
+
             <Button variant="ghost" size="sm" onClick={resetSession} className="text-xs text-gray-500">
               Nueva sesión
             </Button>
