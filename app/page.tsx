@@ -15,7 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { PASO_LABELS, siguientePaso } from "@/lib/conductor";
 import { StrategiesPanel } from "./components/strategies/StrategiesPanel";
-import type { FODA, CandidatoProblema, Documento, Hallazgo, AnalisisEstrategico } from "@/types";
+import type { FODA, CandidatoProblema, Documento, Hallazgo, AnalisisEstrategico, MatrizFodaCruzada } from "@/types";
 
 const PASOS_PROGRESO = ["upload", "foda", "strategies", "problem", "causal", "audit", "objectives", "export"];
 
@@ -628,14 +628,62 @@ function StrategiesScreen() {
     foda,
     debilidades_prioritarias,
     hallazgos,
+    matriz_foda,
     setAgentStatus,
     setCandidatos,
     setPasoActual,
+    setMatrizFoda,
   } = useSTBStore();
   const [loading, setLoading] = useState(false);
+  const [loadingMatriz, setLoadingMatriz] = useState(false);
+  const [loadingPdf, setLoadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!analisis_estrategico) return null;
+
+  const handleGenerarMatriz = async () => {
+    if (!foda || !analisis_estrategico) return;
+    setLoadingMatriz(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/matriz-foda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ foda, analisis_estrategico }),
+      });
+      if (!res.ok) throw new Error("Error generando Matriz FODA");
+      const data = await res.json() as { matriz: MatrizFodaCruzada };
+      setMatrizFoda(data.matriz);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setLoadingMatriz(false);
+    }
+  };
+
+  const handleDescargarMatrizPdf = async () => {
+    if (!foda || !matriz_foda) return;
+    setLoadingPdf(true);
+    try {
+      const ReactPDF = await import("@react-pdf/renderer");
+      const { MatrizFodaPdf } = await import("./components/MatrizFodaPdf");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const blob = await (ReactPDF.pdf as any)(
+        <MatrizFodaPdf foda={foda} matriz={matriz_foda} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `DACYTI_MatrizFODA_Operativa_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Error generando PDF Matriz FODA:", e);
+      setError("Error al generar el PDF de la Matriz FODA");
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
 
   const handleContinuar = async () => {
     setLoading(true);
@@ -683,6 +731,79 @@ function StrategiesScreen() {
       </div>
 
       <StrategiesPanel analisis={analisis_estrategico} />
+
+      {/* ── Bloque Matriz FODA Cruzada ── */}
+      <div className="border border-emerald-200 rounded-xl bg-emerald-50 p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-emerald-900 text-sm">
+              Matriz FODA Cruzada · Estrategias Operativas
+            </h3>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              Genera estrategias FO, FA, DO y DA alimentadas con el análisis Porter. Producto PDF independiente.
+            </p>
+          </div>
+          <Badge variant="outline" className="text-xs border-emerald-400 text-emerald-700 shrink-0">
+            Nuevo
+          </Badge>
+        </div>
+
+        {!matriz_foda ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-emerald-500 text-emerald-800 hover:bg-emerald-100 gap-1.5"
+            onClick={handleGenerarMatriz}
+            disabled={loadingMatriz}
+          >
+            {loadingMatriz ? (
+              <><span className="animate-spin">⟳</span> Generando Matriz FODA…</>
+            ) : (
+              <>⊕ Generar Matriz FODA Cruzada</>
+            )}
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <div className="bg-white border border-emerald-200 rounded-lg px-3 py-2 text-xs text-emerald-800">
+              <span className="font-semibold">Estrategia dominante:</span>{" "}
+              {matriz_foda.estrategia_dominante}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {(["FO","FA","DO","DA"] as const).map((tipo) => (
+                <span
+                  key={tipo}
+                  className="text-xs bg-white border border-emerald-300 rounded px-2 py-0.5 text-emerald-800 font-medium"
+                >
+                  {tipo}: {matriz_foda[tipo].estrategias.length} estrategias
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
+                onClick={handleDescargarMatrizPdf}
+                disabled={loadingPdf}
+              >
+                {loadingPdf ? (
+                  <><span className="animate-spin">⟳</span> Generando PDF…</>
+                ) : (
+                  <>📊 Descargar Matriz FODA PDF</>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs border-emerald-400 text-emerald-700"
+                onClick={handleGenerarMatriz}
+                disabled={loadingMatriz}
+              >
+                {loadingMatriz ? "Regenerando…" : "↻ Regenerar"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">

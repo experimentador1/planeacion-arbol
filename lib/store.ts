@@ -12,6 +12,7 @@ import type {
   ResultadoAuditoria,
   ArbolObjetivos,
   AnalisisEstrategico,
+  MatrizFodaCruzada,
 } from "@/types";
 
 const initialAgentStatus: AgentStatus = {
@@ -39,6 +40,7 @@ export const useSTBStore = create<SessionState>((set) => ({
   auditoria: null,
   arbol_objetivos: null,
   analisis_estrategico: null,
+  matriz_foda: null,
 
   setPasoActual: (paso: PasoFlujo) => set({ paso_actual: paso }),
 
@@ -70,6 +72,8 @@ export const useSTBStore = create<SessionState>((set) => ({
   setAnalisisEstrategico: (analisis_estrategico: AnalisisEstrategico) =>
     set({ analisis_estrategico }),
 
+  setMatrizFoda: (matriz_foda: MatrizFodaCruzada) => set({ matriz_foda }),
+
   resetSession: () =>
     set({
       paso_actual: "upload",
@@ -85,5 +89,6 @@ export const useSTBStore = create<SessionState>((set) => ({
       auditoria: null,
       arbol_objetivos: null,
       analisis_estrategico: null,
+      matriz_foda: null,
     }),
 }));

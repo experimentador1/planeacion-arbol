@@ -187,6 +187,42 @@ export interface AnalisisEstrategico {
   resumen_ejecutivo: string;
 }
 
+// ─── Matriz FODA Cruzada (Estrategias Operativas) ────────────────────────────
+
+export type TipoCuadranteFODA = "FO" | "FA" | "DO" | "DA";
+export type PrioridadOperativa = "ALTA" | "MEDIA" | "BAJA";
+export type HorizonteOperativo = "INMEDIATO" | "CORTO_PLAZO" | "MEDIANO_PLAZO";
+
+export interface EstrategiaOperativa {
+  id: string;
+  descripcion: string;
+  fortalezas_vinculadas: string[];
+  factores_externos_vinculados: string[];
+  insight_porter: string;
+  prioridad: PrioridadOperativa;
+  indicador_exito: string;
+  responsable_sugerido: string;
+  horizonte: HorizonteOperativo;
+}
+
+export interface CuadranteFODA {
+  tipo: TipoCuadranteFODA;
+  titulo: string;
+  orientacion: string;
+  descripcion_logica: string;
+  estrategias: EstrategiaOperativa[];
+}
+
+export interface MatrizFodaCruzada {
+  FO: CuadranteFODA;
+  FA: CuadranteFODA;
+  DO: CuadranteFODA;
+  DA: CuadranteFODA;
+  estrategia_dominante: string;
+  sintesis_ejecutiva: string;
+  acciones_prioritarias: string[];
+}
+
 // ─── Estado de Sesión (Zustand) ───────────────────────────────────────────────
 export type PasoFlujo =
   | "upload"
@@ -223,6 +259,7 @@ export interface SessionState {
   auditoria: ResultadoAuditoria | null;
   arbol_objetivos: ArbolObjetivos | null;
   analisis_estrategico: AnalisisEstrategico | null;
+  matriz_foda: MatrizFodaCruzada | null;
   // Acciones
   setPasoActual: (paso: PasoFlujo) => void;
   setAgentStatus: (agente: keyof AgentStatus, status: AgentStatus[keyof AgentStatus]) => void;
@@ -236,5 +273,6 @@ export interface SessionState {
   setAuditoria: (auditoria: ResultadoAuditoria) => void;
   setArbolObjetivos: (arbol: ArbolObjetivos) => void;
   setAnalisisEstrategico: (analisis: AnalisisEstrategico) => void;
+  setMatrizFoda: (matriz: MatrizFodaCruzada) => void;
   resetSession: () => void;
 }
