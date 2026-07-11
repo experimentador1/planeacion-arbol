@@ -13,6 +13,8 @@ import type {
   ArbolObjetivos,
   AnalisisEstrategico,
   MatrizFodaCruzada,
+  MatrizFodaCompleta,
+  PipelineMatrizStep,
 } from "@/types";
 
 const initialAgentStatus: AgentStatus = {
@@ -41,6 +43,8 @@ export const useSTBStore = create<SessionState>((set) => ({
   arbol_objetivos: null,
   analisis_estrategico: null,
   matriz_foda: null,
+  matriz_foda_completa: null,
+  pipeline_matriz_step: "idle" as PipelineMatrizStep,
 
   setPasoActual: (paso: PasoFlujo) => set({ paso_actual: paso }),
 
@@ -74,6 +78,12 @@ export const useSTBStore = create<SessionState>((set) => ({
 
   setMatrizFoda: (matriz_foda: MatrizFodaCruzada) => set({ matriz_foda }),
 
+  setMatrizFodaCompleta: (matriz_foda_completa: MatrizFodaCompleta) =>
+    set({ matriz_foda_completa }),
+
+  setPipelineMatrizStep: (pipeline_matriz_step: PipelineMatrizStep) =>
+    set({ pipeline_matriz_step }),
+
   resetSession: () =>
     set({
       paso_actual: "upload",
@@ -90,5 +100,7 @@ export const useSTBStore = create<SessionState>((set) => ({
       arbol_objetivos: null,
       analisis_estrategico: null,
       matriz_foda: null,
+      matriz_foda_completa: null,
+      pipeline_matriz_step: "idle" as PipelineMatrizStep,
     }),
 }));

@@ -223,6 +223,98 @@ export interface MatrizFodaCruzada {
   acciones_prioritarias: string[];
 }
 
+// ─── Pipeline Matriz FODA Completa (multi-agente) ────────────────────────────
+
+export interface ContextoCompleto {
+  // FODA
+  fortalezas: string[];
+  debilidades: string[];
+  oportunidades: string[];
+  amenazas: string[];
+  debilidades_prioritarias: string[];
+  // Porter
+  posicionamiento: string;
+  estrategia_generica: string;
+  fuerza_dominante: string;
+  lineas_estrategicas: string[];
+  trade_offs: string[];
+  calce_actividades: string[];
+  resumen_porter: string;
+  // Árbol de problemas
+  problema_central: string;
+  causas_directas: string[];
+  causas_criticas: string[];
+  efectos: string[];
+  // Árbol de objetivos
+  objetivo_central: string;
+  medios_directos: string[];
+  fines: string[];
+  // Hallazgos documentales
+  hallazgos_problema: string[];
+  hallazgos_causa: string[];
+  hallazgos_dato: string[];
+  hallazgos_contexto: string[];
+  // Auditoría
+  calidad_metodologica: string;
+  observaciones_auditoria: string;
+}
+
+export interface TensionEstrategica {
+  descripcion: string;
+  elementos_foda: string[];
+  cuadrante_sugerido: TipoCuadranteFODA;
+  relevancia: "CRITICA" | "ALTA" | "MEDIA";
+}
+
+export interface ContextoValidado {
+  contexto: ContextoCompleto;
+  tensiones_estrategicas: TensionEstrategica[];
+  combinaciones_fo: string[][];
+  combinaciones_fa: string[][];
+  combinaciones_do: string[][];
+  combinaciones_da: string[][];
+  observaciones_validacion: string[];
+  total_combinaciones_identificadas: number;
+}
+
+export interface MetadatoCuadrante {
+  total_estrategias: number;
+  prioridades: { ALTA: number; MEDIA: number; BAJA: number };
+  horizontes: { INMEDIATO: number; CORTO_PLAZO: number; MEDIANO_PLAZO: number };
+  resumen_ejecutivo: string;
+  mensaje_director: string;
+}
+
+export interface MatrizFodaCompleta {
+  FO: CuadranteFODA;
+  FA: CuadranteFODA;
+  DO: CuadranteFODA;
+  DA: CuadranteFODA;
+  metadatos: {
+    FO: MetadatoCuadrante;
+    FA: MetadatoCuadrante;
+    DO: MetadatoCuadrante;
+    DA: MetadatoCuadrante;
+  };
+  total_estrategias: number;
+  estrategia_dominante: string;
+  sintesis_ejecutiva: string;
+  mensaje_para_direccion: string;
+  acciones_inmediatas: string[];
+  acciones_corto_plazo: string[];
+  acciones_mediano_plazo: string[];
+  fuentes_consideradas: string[];
+}
+
+export type PipelineMatrizStep =
+  | "idle"
+  | "recolectando"
+  | "validando"
+  | "organizando"
+  | "revisando"
+  | "done"
+  | "error";
+
 // ─── Estado de Sesión (Zustand) ───────────────────────────────────────────────
 export type PasoFlujo =
   | "upload"
@@ -260,6 +352,8 @@ export interface SessionState {
   arbol_objetivos: ArbolObjetivos | null;
   analisis_estrategico: AnalisisEstrategico | null;
   matriz_foda: MatrizFodaCruzada | null;
+  matriz_foda_completa: MatrizFodaCompleta | null;
+  pipeline_matriz_step: PipelineMatrizStep;
   // Acciones
   setPasoActual: (paso: PasoFlujo) => void;
   setAgentStatus: (agente: keyof AgentStatus, status: AgentStatus[keyof AgentStatus]) => void;
@@ -274,5 +368,7 @@ export interface SessionState {
   setArbolObjetivos: (arbol: ArbolObjetivos) => void;
   setAnalisisEstrategico: (analisis: AnalisisEstrategico) => void;
   setMatrizFoda: (matriz: MatrizFodaCruzada) => void;
+  setMatrizFodaCompleta: (matriz: MatrizFodaCompleta) => void;
+  setPipelineMatrizStep: (step: PipelineMatrizStep) => void;
   resetSession: () => void;
 }

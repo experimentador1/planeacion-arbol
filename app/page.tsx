@@ -15,7 +15,16 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { PASO_LABELS, siguientePaso } from "@/lib/conductor";
 import { StrategiesPanel } from "./components/strategies/StrategiesPanel";
-import type { FODA, CandidatoProblema, Documento, Hallazgo, AnalisisEstrategico, MatrizFodaCruzada } from "@/types";
+import type {
+  FODA,
+  CandidatoProblema,
+  Documento,
+  Hallazgo,
+  AnalisisEstrategico,
+  MatrizFodaCruzada,
+  MatrizFodaCompleta,
+  PipelineMatrizStep,
+} from "@/types";
 
 const PASOS_PROGRESO = ["upload", "foda", "strategies", "problem", "causal", "audit", "objectives", "export"];
 
@@ -628,11 +637,17 @@ function StrategiesScreen() {
     foda,
     debilidades_prioritarias,
     hallazgos,
-    matriz_foda,
+    arbol_problemas,
+    pareto,
+    auditoria,
+    arbol_objetivos,
+    matriz_foda_completa,
+    pipeline_matriz_step,
     setAgentStatus,
     setCandidatos,
     setPasoActual,
-    setMatrizFoda,
+    setMatrizFodaCompleta,
+    setPipelineMatrizStep,
   } = useSTBStore();
   const [loading, setLoading] = useState(false);
   const [loadingMatriz, setLoadingMatriz] = useState(false);
@@ -645,40 +660,58 @@ function StrategiesScreen() {
     if (!foda || !analisis_estrategico) return;
     setLoadingMatriz(true);
     setError(null);
+    setPipelineMatrizStep("recolectando");
     try {
-      const res = await fetch("/api/matriz-foda", {
+      setPipelineMatrizStep("validando");
+      const res = await fetch("/api/matriz-foda-pipeline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foda, analisis_estrategico }),
+        body: JSON.stringify({
+          foda,
+          debilidades_prioritarias,
+          analisis_estrategico,
+          hallazgos,
+          arbol_problemas,
+          pareto,
+          auditoria,
+          arbol_objetivos,
+        }),
       });
-      if (!res.ok) throw new Error("Error generando Matriz FODA");
-      const data = await res.json() as { matriz: MatrizFodaCruzada };
-      setMatrizFoda(data.matriz);
+      setPipelineMatrizStep("organizando");
+      if (!res.ok) {
+        const err = await res.json() as { error: string };
+        throw new Error(err.error ?? "Error en pipeline Matriz FODA");
+      }
+      const data = await res.json() as { matriz: MatrizFodaCompleta; stats: { total_estrategias: number } };
+      setPipelineMatrizStep("revisando");
+      setMatrizFodaCompleta(data.matriz);
+      setPipelineMatrizStep("done");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
+      setPipelineMatrizStep("error");
     } finally {
       setLoadingMatriz(false);
     }
   };
 
   const handleDescargarMatrizPdf = async () => {
-    if (!foda || !matriz_foda) return;
+    if (!matriz_foda_completa) return;
     setLoadingPdf(true);
     try {
       const ReactPDF = await import("@react-pdf/renderer");
-      const { MatrizFodaPdf } = await import("./components/MatrizFodaPdf");
+      const { MatrizFodaCompletaPdf } = await import("./components/MatrizFodaCompletaPdf");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const blob = await (ReactPDF.pdf as any)(
-        <MatrizFodaPdf foda={foda} matriz={matriz_foda} />
+        <MatrizFodaCompletaPdf matriz={matriz_foda_completa} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `DACYTI_MatrizFODA_Operativa_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.download = `DACYTI_MatrizFODA_Completa_${new Date().toISOString().slice(0, 10)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      console.error("Error generando PDF Matriz FODA:", e);
+      console.error("Error generando PDF Matriz FODA Completa:", e);
       setError("Error al generar el PDF de la Matriz FODA");
     } finally {
       setLoadingPdf(false);
@@ -732,53 +765,97 @@ function StrategiesScreen() {
 
       <StrategiesPanel analisis={analisis_estrategico} />
 
-      {/* ── Bloque Matriz FODA Cruzada ── */}
-      <div className="border border-emerald-200 rounded-xl bg-emerald-50 p-4 space-y-3">
+      {/* ── Bloque Matriz FODA Cruzada — Pipeline 4 Agentes ── */}
+      <div className="border border-emerald-200 rounded-xl bg-emerald-50 p-4 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="font-semibold text-emerald-900 text-sm">
-              Matriz FODA Cruzada · Estrategias Operativas
+              Matriz FODA Cruzada Completa · Pipeline 4 Agentes
             </h3>
             <p className="text-xs text-emerald-700 mt-0.5">
-              Genera estrategias FO, FA, DO y DA alimentadas con el análisis Porter. Producto PDF independiente.
+              Recolecta todo el proceso STB → Valida combinaciones → Genera TODAS las estrategias sin límite → Revisa para lectura humana
             </p>
           </div>
           <Badge variant="outline" className="text-xs border-emerald-400 text-emerald-700 shrink-0">
-            Nuevo
+            Exhaustivo
           </Badge>
         </div>
 
-        {!matriz_foda ? (
+        {/* Indicador de pasos del pipeline */}
+        {(loadingMatriz || pipeline_matriz_step !== "idle") && (
+          <div className="grid grid-cols-4 gap-2">
+            {([
+              { step: "recolectando", label: "1. Recolector", desc: "Compila contexto STB" },
+              { step: "validando",    label: "2. Validador",  desc: "Mapea combinaciones FODA" },
+              { step: "organizando",  label: "3. Organizador",desc: "Genera estrategias" },
+              { step: "revisando",    label: "4. Revisor",    desc: "Prepara para dirección" },
+            ] as { step: PipelineMatrizStep; label: string; desc: string }[]).map(({ step, label, desc }) => {
+              const stepOrder: PipelineMatrizStep[] = ["recolectando", "validando", "organizando", "revisando", "done"];
+              const currentIdx = stepOrder.indexOf(pipeline_matriz_step);
+              const stepIdx = stepOrder.indexOf(step);
+              const isDone = currentIdx > stepIdx;
+              const isActive = currentIdx === stepIdx;
+              return (
+                <div
+                  key={step}
+                  className={`rounded-lg p-2.5 text-center border transition-all ${
+                    isDone
+                      ? "bg-emerald-100 border-emerald-400 text-emerald-800"
+                      : isActive
+                      ? "bg-emerald-600 border-emerald-700 text-white animate-pulse"
+                      : "bg-white border-gray-200 text-gray-400"
+                  }`}
+                >
+                  <div className="text-xs font-semibold">{isDone ? "✓" : isActive ? "⟳" : "○"} {label}</div>
+                  <div className="text-xs mt-0.5 opacity-80">{desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!matriz_foda_completa ? (
           <Button
             size="sm"
-            variant="outline"
-            className="border-emerald-500 text-emerald-800 hover:bg-emerald-100 gap-1.5"
+            className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
             onClick={handleGenerarMatriz}
             disabled={loadingMatriz}
           >
             {loadingMatriz ? (
-              <><span className="animate-spin">⟳</span> Generando Matriz FODA…</>
+              <><span className="animate-spin">⟳</span> Ejecutando pipeline…</>
             ) : (
-              <>⊕ Generar Matriz FODA Cruzada</>
+              <>⊕ Generar Matriz FODA Completa (4 Agentes)</>
             )}
           </Button>
         ) : (
-          <div className="space-y-2">
-            <div className="bg-white border border-emerald-200 rounded-lg px-3 py-2 text-xs text-emerald-800">
-              <span className="font-semibold">Estrategia dominante:</span>{" "}
-              {matriz_foda.estrategia_dominante}
+          <div className="space-y-3">
+            {/* Resumen de resultado */}
+            <div className="bg-white border border-emerald-200 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-semibold text-emerald-900">
+                ✓ Matriz generada — {matriz_foda_completa.total_estrategias} estrategias totales
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {(["FO","FA","DO","DA"] as const).map((tipo) => {
+                  const colors: Record<string, string> = {
+                    FO: "bg-green-100 text-green-800 border-green-300",
+                    FA: "bg-blue-100 text-blue-800 border-blue-300",
+                    DO: "bg-amber-100 text-amber-800 border-amber-300",
+                    DA: "bg-red-100 text-red-800 border-red-300",
+                  };
+                  return (
+                    <span key={tipo} className={`text-xs border rounded px-2 py-0.5 font-medium ${colors[tipo]}`}>
+                      {tipo}: {matriz_foda_completa[tipo].estrategias.length}
+                    </span>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-600 italic">
+                {matriz_foda_completa.estrategia_dominante}
+              </p>
             </div>
+
+            {/* Botones de acción */}
             <div className="flex gap-2 flex-wrap">
-              {(["FO","FA","DO","DA"] as const).map((tipo) => (
-                <span
-                  key={tipo}
-                  className="text-xs bg-white border border-emerald-300 rounded px-2 py-0.5 text-emerald-800 font-medium"
-                >
-                  {tipo}: {matriz_foda[tipo].estrategias.length} estrategias
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
               <Button
                 size="sm"
                 className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
@@ -794,11 +871,11 @@ function StrategiesScreen() {
               <Button
                 size="sm"
                 variant="outline"
-                className="text-xs border-emerald-400 text-emerald-700"
+                className="text-xs border-emerald-500 text-emerald-700 hover:bg-emerald-50"
                 onClick={handleGenerarMatriz}
                 disabled={loadingMatriz}
               >
-                {loadingMatriz ? "Regenerando…" : "↻ Regenerar"}
+                {loadingMatriz ? "Regenerando…" : "↻ Regenerar matriz"}
               </Button>
             </div>
           </div>
