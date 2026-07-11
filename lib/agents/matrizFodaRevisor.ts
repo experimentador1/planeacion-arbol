@@ -8,6 +8,7 @@
 
 import { createLLM } from "@/lib/llm";
 import { buildRevisorPrompt } from "@/lib/prompts/matrizFodaRevisor";
+import { repairJson } from "@/lib/utils/jsonRepair";
 import type { MatrizFodaCruzada, MatrizFodaCompleta, MetadatoCuadrante } from "@/types";
 
 const llm = createLLM(0.25);
@@ -56,9 +57,11 @@ export async function runRevisorAgent(
     ]);
 
     const content = typeof response.content === "string" ? response.content : "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      parsed = JSON.parse(jsonMatch[0]);
+    try {
+      const repairedJson = repairJson(content);
+      parsed = JSON.parse(repairedJson);
+    } catch {
+      // parsed queda vacío, se usan defaults abajo
     }
   } catch {
     // Si el revisor falla, construimos metadatos básicos automáticamente

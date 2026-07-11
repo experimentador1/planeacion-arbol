@@ -7,7 +7,10 @@
 
 import { createLLM } from "@/lib/llm";
 import { buildValidadorPrompt } from "@/lib/prompts/matrizFodaValidador";
+import { repairJson } from "@/lib/utils/jsonRepair";
 import type { ContextoCompleto, ContextoValidado } from "@/types";
+
+const MAX_COMBINACIONES_POR_CUADRANTE = 10;
 
 const llm = createLLM(0.2);
 
@@ -28,22 +31,30 @@ export async function runValidadorAgent(
   ]);
 
   const content = typeof response.content === "string" ? response.content : "";
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
 
-  if (!jsonMatch) {
+  let parsed: Omit<ContextoValidado, "contexto">;
+  try {
+    const repairedJson = repairJson(content);
+    parsed = JSON.parse(repairedJson) as Omit<ContextoValidado, "contexto">;
+  } catch {
     throw new Error("El Agente Validador no devolvió un JSON válido");
   }
 
-  const parsed = JSON.parse(jsonMatch[0]) as Omit<ContextoValidado, "contexto">;
+  // Aplicar límite de combinaciones por cuadrante para evitar JSON truncado
+  const cap = MAX_COMBINACIONES_POR_CUADRANTE;
+  const fo = (parsed.combinaciones_fo ?? []).slice(0, cap);
+  const fa = (parsed.combinaciones_fa ?? []).slice(0, cap);
+  const doC = (parsed.combinaciones_do ?? []).slice(0, cap);
+  const da = (parsed.combinaciones_da ?? []).slice(0, cap);
 
   return {
     contexto,
     tensiones_estrategicas: parsed.tensiones_estrategicas ?? [],
-    combinaciones_fo: parsed.combinaciones_fo ?? [],
-    combinaciones_fa: parsed.combinaciones_fa ?? [],
-    combinaciones_do: parsed.combinaciones_do ?? [],
-    combinaciones_da: parsed.combinaciones_da ?? [],
+    combinaciones_fo: fo,
+    combinaciones_fa: fa,
+    combinaciones_do: doC,
+    combinaciones_da: da,
     observaciones_validacion: parsed.observaciones_validacion ?? [],
-    total_combinaciones_identificadas: parsed.total_combinaciones_identificadas ?? 0,
+    total_combinaciones_identificadas: fo.length + fa.length + doC.length + da.length,
   };
 }
