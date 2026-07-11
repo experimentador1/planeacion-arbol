@@ -124,11 +124,11 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional.
 }
 
 REGLAS:
-- Máximo 10 combinaciones por cuadrante (40 en total). Prioriza las de mayor impacto.
+- Máximo 15 combinaciones por cuadrante (60 en total). Prioriza las de mayor impacto.
 - Una combinación es válida si genera una acción institucional concreta y distinta
 - El total_combinaciones_identificadas es la suma de todas las listas
 - Prioriza combinaciones respaldadas por hallazgos documentales o causas críticas
-- Si hay más de 10 candidatas por cuadrante, selecciona las 10 de mayor relevancia estratégica
+- Si hay más de 15 candidatas por cuadrante, selecciona las 15 de mayor relevancia estratégica
 `;
 
 export function buildValidadorPrompt(ctx: {

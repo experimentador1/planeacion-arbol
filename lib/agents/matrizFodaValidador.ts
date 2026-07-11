@@ -10,7 +10,7 @@ import { buildValidadorPrompt } from "@/lib/prompts/matrizFodaValidador";
 import { repairJson } from "@/lib/utils/jsonRepair";
 import type { ContextoCompleto, ContextoValidado } from "@/types";
 
-const MAX_COMBINACIONES_POR_CUADRANTE = 10;
+const MAX_COMBINACIONES_POR_CUADRANTE = 15;
 
 const llm = createLLM(0.2);
 
