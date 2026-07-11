@@ -15,7 +15,7 @@ import type {
   ResultadoAuditoria,
   ArbolObjetivos,
   TipoEstrategiaPorter,
-  IntensidadFuerza,
+  MatrizFodaCompleta,
 } from "@/types";
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
@@ -373,6 +373,95 @@ const s = StyleSheet.create({
     color: "#b45309",
     fontFamily: "Helvetica-Oblique",
   },
+  // ── Lista plana de estrategias ────────────────────────────────────────────
+  estrategiaRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e5e7eb",
+    paddingVertical: 6,
+    gap: 6,
+  },
+  estrategiaNum: {
+    width: 20,
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: "#6b7280",
+    textAlign: "right",
+  },
+  estrategiaBody: { flex: 1 },
+  estrategiaTitulo: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#1e3a5f",
+    marginBottom: 2,
+  },
+  estrategiaDescText: {
+    fontSize: 7.5,
+    color: "#374151",
+    lineHeight: 1.4,
+    marginBottom: 3,
+  },
+  estrategiaMetaRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  estrategiaMetaText: { fontSize: 7, color: "#6b7280" },
+  estrategiaMetaLabel: { fontFamily: "Helvetica-Bold", color: "#374151" },
+  estrategiaBadge: {
+    borderRadius: 3,
+    paddingVertical: 1,
+    paddingHorizontal: 4,
+    marginTop: 3,
+    alignSelf: "flex-start",
+  },
+  // ── Matriz FODA Cruzada (2×2) ─────────────────────────────────────────────
+  matrizGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  matrizCell: {
+    width: "48.5%",
+    borderRadius: 4,
+    borderWidth: 1.5,
+    overflow: "hidden",
+    marginBottom: 4,
+  },
+  matrizCellHeader: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  matrizCellTipo: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
+  },
+  matrizCellTitulo: {
+    fontSize: 7.5,
+    color: "rgba(255,255,255,0.85)",
+    fontFamily: "Helvetica-Bold",
+  },
+  matrizCellCount: {
+    fontSize: 7,
+    color: "rgba(255,255,255,0.7)",
+  },
+  matrizCellBody: { padding: 6 },
+  matrizEstrategiaItem: {
+    flexDirection: "row",
+    gap: 4,
+    marginBottom: 4,
+    paddingBottom: 3,
+    borderBottomWidth: 0.3,
+    borderBottomColor: "#e5e7eb",
+  },
+  matrizNumero: {
+    fontSize: 6.5,
+    fontFamily: "Helvetica-Bold",
+    width: 14,
+  },
+  matrizItemBody: { flex: 1 },
+  matrizItemDesc: { fontSize: 7, color: "#111827", lineHeight: 1.4, marginBottom: 1 },
+  matrizItemMeta: { fontSize: 6.5, color: "#6b7280" },
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
     position: "absolute",
@@ -393,16 +482,29 @@ const s = StyleSheet.create({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const INTENSIDAD_BG: Record<IntensidadFuerza, string> = {
+const TIPO_LABELS: Record<TipoEstrategiaPorter, string> = {
+  DIFERENCIACION: "Diferenciación",
+  EFICIENCIA_INSTITUCIONAL: "Eficiencia Institucional",
+  ENFOQUE: "Enfoque",
+};
+
+const PRIORIDAD_COLOR: Record<string, string> = {
   ALTA: "#dc2626",
   MEDIA: "#d97706",
   BAJA: "#16a34a",
 };
 
-const TIPO_LABELS: Record<TipoEstrategiaPorter, string> = {
-  DIFERENCIACION: "Diferenciación",
-  EFICIENCIA_INSTITUCIONAL: "Eficiencia Institucional",
-  ENFOQUE: "Enfoque",
+const HORIZONTE_LABEL: Record<string, string> = {
+  INMEDIATO: "0–3 m",
+  CORTO_PLAZO: "3–12 m",
+  MEDIANO_PLAZO: "1–3 a",
+};
+
+const CUADRANTE_COLORS: Record<string, { header: string; light: string; border: string }> = {
+  FO: { header: "#166534", light: "#f0fdf4", border: "#16a34a" },
+  FA: { header: "#1e3a8a", light: "#eff6ff", border: "#2563eb" },
+  DO: { header: "#92400e", light: "#fffbeb", border: "#d97706" },
+  DA: { header: "#9f1239", light: "#fff1f2", border: "#e11d48" },
 };
 
 function InstHeader({ fecha }: { fecha: string }) {
@@ -433,6 +535,7 @@ function Footer({ pagina, total }: { pagina: number; total: number }) {
 interface Props {
   foda: FODA | null;
   analisisEstrategico: AnalisisEstrategico | null;
+  matrizFodaCompleta?: MatrizFodaCompleta | null;
   arbolProblemas: ArbolProblemas | null;
   pareto: AnalisisPareto | null;
   auditoria: ResultadoAuditoria | null;
@@ -444,6 +547,7 @@ interface Props {
 export function ReportePdf({
   foda,
   analisisEstrategico,
+  matrizFodaCompleta,
   arbolProblemas,
   pareto,
   auditoria,
@@ -460,7 +564,8 @@ export function ReportePdf({
   const totalPaginas =
     1 + // portada
     (foda ? 1 : 0) +
-    (analisisEstrategico ? 2 : 0) + // 5 fuerzas + líneas estratégicas
+    (analisisEstrategico ? 1 : 0) + // Lista plana de estrategias Porter
+    (matrizFodaCompleta ? 1 : 0) +  // Matriz FODA Cruzada
     (arbolProblemas ? 1 : 0) +
     (pareto ? 1 : 0) +
     (auditoria ? 1 : 0) +
@@ -469,14 +574,6 @@ export function ReportePdf({
   const nextPag = () => {
     paginaActual += 1;
     return paginaActual;
-  };
-
-  const FUERZAS_LABELS: Record<string, string> = {
-    rivalidad_institucional: "Rivalidad institucional",
-    poder_financiadores: "Poder de financiadores/autoridades",
-    amenaza_nuevos_actores: "Amenaza de nuevos actores",
-    poder_proveedores: "Poder de proveedores/aliados",
-    presion_sustitutos: "Presión de sustitutos",
   };
 
   return (
@@ -554,87 +651,76 @@ export function ReportePdf({
         </Page>
       )}
 
-      {/* ────────────────────────────────────── ANÁLISIS PORTER — 5 FUERZAS */}
+      {/* ─────────────────────────── ANÁLISIS ESTRATÉGICO — LISTA DE ESTRATEGIAS */}
       {analisisEstrategico && (
         <Page size="A4" style={s.page}>
           <InstHeader fecha={fecha} />
-          <Text style={s.sectionTitle}>ANÁLISIS ESTRATÉGICO — 5 FUERZAS COMPETITIVAS (PORTER)</Text>
+          <Text style={s.sectionTitle}>ANÁLISIS ESTRATÉGICO</Text>
 
+          {/* Posicionamiento */}
           <View style={s.posBox}>
-            <Text style={s.posLabel}>Posicionamiento estratégico recomendado</Text>
+            <Text style={s.posLabel}>POSICIONAMIENTO ESTRATÉGICO RECOMENDADO</Text>
             <Text style={s.posText}>{analisisEstrategico.posicionamiento_recomendado}</Text>
           </View>
 
-          <Text style={[s.posLabel, { color: "#374151", marginBottom: 6 }]}>
-            Estrategia genérica: {TIPO_LABELS[analisisEstrategico.estrategia_generica]}
+          <Text style={[s.posLabel, { color: "#374151", marginBottom: 8 }]}>
+            Estrategia genérica:{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold", color: "#1e3a5f" }}>
+              {TIPO_LABELS[analisisEstrategico.estrategia_generica]}
+            </Text>
+            {"  ·  Resumen ejecutivo: "}
+            {analisisEstrategico.resumen_ejecutivo}
           </Text>
 
-          {Object.entries(FUERZAS_LABELS).map(([key, label]) => {
-            const f = analisisEstrategico.cinco_fuerzas[
-              key as keyof typeof analisisEstrategico.cinco_fuerzas
-            ];
-            if (!f || typeof f === "string") return null;
-            const fuerza = f as { intensidad: IntensidadFuerza; descripcion: string; implicacion_estrategica: string };
-            return (
-              <View key={key} style={[s.fuerzaRow, { borderColor: "#e5e7eb" }]}>
-                <View style={[s.fuerzaBadge, { backgroundColor: INTENSIDAD_BG[fuerza.intensidad] }]}>
-                  <Text style={s.fuerzaBadgeText}>{fuerza.intensidad}</Text>
-                </View>
-                <View style={s.fuerzaContent}>
-                  <Text style={s.fuerzaNombre}>{label}</Text>
-                  <Text style={s.fuerzaDesc}>{fuerza.descripcion}</Text>
-                  <Text style={s.fuerzaImpl}>→ {fuerza.implicacion_estrategica}</Text>
-                </View>
-              </View>
-            );
-          })}
+          {/* Lista plana de TODAS las estrategias Porter */}
+          <Text style={[s.sectionTitle, { fontSize: 9, marginBottom: 6 }]}>
+            ESTRATEGIAS IDENTIFICADAS
+          </Text>
 
-          <View style={s.resumenBox}>
-            <Text style={[s.posLabel, { color: "#374151", marginBottom: 4 }]}>Resumen del entorno</Text>
-            <Text style={s.resumenText}>{analisisEstrategico.cinco_fuerzas.resumen}</Text>
-          </View>
-
-          <Footer pagina={nextPag()} total={totalPaginas} />
-        </Page>
-      )}
-
-      {/* ────────────────────────────────── LÍNEAS ESTRATÉGICAS + TRADE-OFFS */}
-      {analisisEstrategico && (
-        <Page size="A4" style={s.page}>
-          <InstHeader fecha={fecha} />
-          <Text style={s.sectionTitle}>LÍNEAS ESTRATÉGICAS</Text>
-
-          <View style={s.resumenBox}>
-            <Text style={s.resumenText}>{analisisEstrategico.resumen_ejecutivo}</Text>
-          </View>
-
-          {analisisEstrategico.lineas_estrategicas.map((linea) => (
-            <View key={linea.id} style={{ marginBottom: 10 }}>
-              <Text style={[s.estrategiaNombre, { fontSize: 9, color: "#1e3a5f", marginBottom: 4 }]}>
-                {linea.id} — {linea.nombre}
-              </Text>
-              {linea.estrategias.map((est) => (
-                <View key={est.id} style={s.estrategiaCard}>
-                  <Text style={s.estrategiaNombre}>{est.nombre}</Text>
-                  <Text style={s.estrategiaDesc}>{est.descripcion}</Text>
-                  <Text style={s.estrategiaField}>
-                    <Text style={s.estrategiaFieldLabel}>Ventaja: </Text>
-                    {est.ventaja_distintiva}
-                  </Text>
-                  <View style={s.tradeOffBox}>
-                    <Text style={s.tradeOffText}>Trade-off: {est.trade_off}</Text>
+          {analisisEstrategico.lineas_estrategicas.flatMap((linea) =>
+            linea.estrategias.map((est, idx) => {
+              const globalIdx =
+                analisisEstrategico.lineas_estrategicas
+                  .slice(0, analisisEstrategico.lineas_estrategicas.indexOf(linea))
+                  .reduce((acc, l) => acc + l.estrategias.length, 0) + idx + 1;
+              const prioColor = PRIORIDAD_COLOR[est.prioridad] ?? "#6b7280";
+              return (
+                <View key={est.id} style={s.estrategiaRow}>
+                  <Text style={s.estrategiaNum}>{globalIdx}</Text>
+                  <View style={s.estrategiaBody}>
+                    <Text style={s.estrategiaTitulo}>{est.nombre}</Text>
+                    <Text style={s.estrategiaDescText}>{est.descripcion}</Text>
+                    <View style={s.estrategiaMetaRow}>
+                      <Text style={s.estrategiaMetaText}>
+                        <Text style={s.estrategiaMetaLabel}>Ventaja: </Text>
+                        {est.ventaja_distintiva}
+                      </Text>
+                    </View>
+                    <View style={s.estrategiaMetaRow}>
+                      <Text style={s.estrategiaMetaText}>
+                        <Text style={s.estrategiaMetaLabel}>Indicador: </Text>
+                        {est.indicador}
+                      </Text>
+                      <Text style={s.estrategiaMetaText}>
+                        <Text style={s.estrategiaMetaLabel}>Horizonte: </Text>
+                        {HORIZONTE_LABEL[est.horizonte] ?? est.horizonte}
+                      </Text>
+                    </View>
+                    <View style={[s.estrategiaBadge, { backgroundColor: prioColor + "22" }]}>
+                      <Text style={[s.estrategiaMetaText, { color: prioColor, fontFamily: "Helvetica-Bold" }]}>
+                        {est.prioridad}  ·  {TIPO_LABELS[est.tipo] ?? est.tipo}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={[s.estrategiaField, { color: "#6b7280" }]}>
-                    Indicador: {est.indicador}
-                  </Text>
                 </View>
-              ))}
-            </View>
-          ))}
+              );
+            })
+          )}
 
+          {/* Trade-offs y calce al final */}
           {analisisEstrategico.trade_offs_criticos?.length > 0 && (
-            <View>
-              <Text style={[s.sectionTitle, { fontSize: 9, marginTop: 6 }]}>
+            <View style={{ marginTop: 8 }}>
+              <Text style={[s.sectionTitle, { fontSize: 8 }]}>
                 TRADE-OFFS CRÍTICOS (Lo que NO haremos)
               </Text>
               {analisisEstrategico.trade_offs_criticos.map((to, i) => (
@@ -645,16 +731,78 @@ export function ReportePdf({
             </View>
           )}
 
-          {analisisEstrategico.calce_actividades?.length > 0 && (
-            <View style={{ marginTop: 6 }}>
-              <Text style={[s.sectionTitle, { fontSize: 9 }]}>CALCE DE ACTIVIDADES</Text>
-              {analisisEstrategico.calce_actividades.map((c, i) => (
-                <View key={i} style={s.calceBox}>
-                  <Text style={s.calceText}>{c}</Text>
+          <Footer pagina={nextPag()} total={totalPaginas} />
+        </Page>
+      )}
+
+      {/* ─────────────────────────────────── MATRIZ FODA CRUZADA (2×2 visual) */}
+      {matrizFodaCompleta && (
+        <Page size="A4" style={s.page}>
+          <InstHeader fecha={fecha} />
+          <Text style={s.sectionTitle}>MATRIZ FODA CRUZADA — ESTRATEGIAS OPERATIVAS</Text>
+
+          <View style={[s.resumenBox, { marginBottom: 8 }]}>
+            <Text style={[s.posLabel, { color: "#374151", marginBottom: 3 }]}>SÍNTESIS EJECUTIVA</Text>
+            <Text style={s.resumenText}>{matrizFodaCompleta.sintesis_ejecutiva}</Text>
+            <Text style={[s.resumenText, { marginTop: 4, fontFamily: "Helvetica-Bold" }]}>
+              Estrategia dominante: {matrizFodaCompleta.estrategia_dominante}
+            </Text>
+            <Text style={[s.resumenText, { marginTop: 2, color: "#6b7280" }]}>
+              Total: {matrizFodaCompleta.total_estrategias} estrategias operativas
+            </Text>
+          </View>
+
+          <View style={s.matrizGrid}>
+            {(["FO", "FA", "DO", "DA"] as const).map((tipo) => {
+              const cuadrante = matrizFodaCompleta[tipo];
+              const colors = CUADRANTE_COLORS[tipo];
+              return (
+                <View
+                  key={tipo}
+                  style={[s.matrizCell, { borderColor: colors.border }]}
+                >
+                  <View style={[s.matrizCellHeader, { backgroundColor: colors.header }]}>
+                    <View>
+                      <Text style={s.matrizCellTipo}>{tipo}</Text>
+                      <Text style={s.matrizCellTitulo}>{cuadrante.titulo}</Text>
+                    </View>
+                    <Text style={s.matrizCellCount}>
+                      {cuadrante.estrategias.length} est.
+                    </Text>
+                  </View>
+                  <View style={[s.matrizCellBody, { backgroundColor: colors.light }]}>
+                    <Text style={[s.matrizItemMeta, { fontStyle: "italic", marginBottom: 4, color: "#4b5563" }]}>
+                      {cuadrante.descripcion_logica}
+                    </Text>
+                    {cuadrante.estrategias.map((est, idx) => (
+                      <View key={est.id} style={s.matrizEstrategiaItem}>
+                        <Text style={[s.matrizNumero, { color: colors.header }]}>
+                          {idx + 1}.
+                        </Text>
+                        <View style={s.matrizItemBody}>
+                          <Text style={s.matrizItemDesc}>{est.descripcion}</Text>
+                          <Text style={s.matrizItemMeta}>
+                            <Text style={{ fontFamily: "Helvetica-Bold" }}>Indicador: </Text>
+                            {est.indicador_exito}
+                          </Text>
+                          <Text style={s.matrizItemMeta}>
+                            <Text style={{ fontFamily: "Helvetica-Bold" }}>Responsable: </Text>
+                            {est.responsable_sugerido}
+                            {"  ·  "}
+                            {HORIZONTE_LABEL[est.horizonte] ?? est.horizonte}
+                            {"  · "}
+                            <Text style={{ color: PRIORIDAD_COLOR[est.prioridad] }}>
+                              {est.prioridad}
+                            </Text>
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              ))}
-            </View>
-          )}
+              );
+            })}
+          </View>
 
           <Footer pagina={nextPag()} total={totalPaginas} />
         </Page>

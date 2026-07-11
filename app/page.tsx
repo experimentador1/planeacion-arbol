@@ -911,6 +911,7 @@ function DescargarReporteBtn() {
   const {
     foda,
     analisis_estrategico,
+    matriz_foda_completa,
     arbol_problemas,
     pareto,
     auditoria,
@@ -931,6 +932,7 @@ function DescargarReporteBtn() {
         <ReportePdf
           foda={foda}
           analisisEstrategico={analisis_estrategico}
+          matrizFodaCompleta={matriz_foda_completa}
           arbolProblemas={arbol_problemas}
           pareto={pareto}
           auditoria={auditoria}
